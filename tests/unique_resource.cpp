@@ -3,8 +3,7 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE unique_resource
 
-#include <uncaught_exceptions>
-#include <unique_resource>
+#include <unique_resource.hpp>
 
 #include <boost/format.hpp>
 using fmt = boost::format;

@@ -2,5 +2,7 @@
 
 nobase_include_HEADERS =                        \
   _config.hpp                                   \
-  uncaught_exceptions                           \
-  unique_resource
+  detail/box.hpp                                \
+  detail/guard.hpp                              \
+  detail/uncaught_exceptions.hpp                \
+  unique_resource.hpp
