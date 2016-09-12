@@ -370,8 +370,8 @@ public:
                           (resource_type&&)t, detail::scope_ignore { })) &&
             noexcept (detail::box<  deleter_type > (
                           (deleter_type&&)u, detail::scope_ignore { })))
-        : resource_ (std::move (t), make_scope_exit ([&] { u (t); })),
-          deleter_  (std::move (u), make_scope_exit ([&, this] { u (get ()); }))
+        : resource_ (std::forward< T > (t), make_scope_exit ([&] { u (t); })),
+          deleter_  (std::forward< U > (u), make_scope_exit ([&, this] { u (get ()); }))
         { }
 
     unique_resource (unique_resource&& other)
@@ -381,7 +381,7 @@ public:
             noexcept (detail::box< deleter_type > (
                           other.deleter_.move (), detail::scope_ignore { })))
         : resource_ (other.resource_.move (), detail::scope_ignore { }),
-                             deleter_  (other.deleter_.move (), make_scope_exit (
+          deleter_  (other. deleter_.move (), make_scope_exit (
                          [&, this] () noexcept {
                              other.get_deleter ()(get ());
                              other.release ();
