@@ -12,16 +12,14 @@ namespace detail {
 
 #if defined (__APPLE__) && defined (__clang__)
 
-extern "C" int __cxa_uncaught_exceptions ();
+extern "C" unsigned __cxa_uncaught_exceptions () noexcept;
 
 inline unsigned
 uncaught_exception_count () {
     return __cxa_uncaught_exceptions ();
 }
 
-#else
-#  error unsupported platform
-#endif // __GNUG__ || __CLANG__
+#endif // __APPLE__ && __clang__
 
 } // namespace detail
 
@@ -481,6 +479,11 @@ public:
         typename std::remove_pointer< resource_type >::type >::type
     operator* () const {
         return *resource_;
+    }
+
+    deleter_type&
+    get_deleter () noexcept {
+        return deleter_.get ();
     }
 
     const deleter_type&
