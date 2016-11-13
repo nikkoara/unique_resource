@@ -4,13 +4,15 @@
 #ifndef STD_UNIQUE_RESOURCE_HPP
 #define STD_UNIQUE_RESOURCE_HPP
 
+#include <limits>
 #include <memory>
 #include <utility>
 
 namespace std {
-namespace detail {
 
 #if defined (__APPLE__) && defined (__clang__)
+
+namespace detail {
 
 extern "C" unsigned __cxa_uncaught_exceptions () noexcept;
 
@@ -19,14 +21,14 @@ uncaught_exception_count () {
     return __cxa_uncaught_exceptions ();
 }
 
-#endif // __APPLE__ && __clang__
-
 } // namespace detail
 
 inline int
 uncaught_exceptions () noexcept {
     return detail::uncaught_exception_count ();
 }
+
+#endif // __APPLE__ && __clang__
 
 ////////////////////////////////////////////////////////////////////////
 
@@ -96,12 +98,14 @@ public:
         return std::move (value);
     }
 
-    void reset (const T& t) noexcept (noexcept (value = t)) {
+    void reset (const T& t) noexcept (
+        noexcept (std::declval< T& > () = std::declval< T& >)) {
         value = t;
     }
 
     void reset (T&& t)
-        noexcept (noexcept (value = maybe_move_assign (t))) {
+        noexcept (noexcept (std::declval< T& > () = maybe_move_assign (
+                                std::declval< T > ()))) {
         value = maybe_move_assign (t);
     }
 
@@ -254,7 +258,8 @@ public:
 
     scope_guard& operator= (scope_guard &&) = delete;
 
-    ~scope_guard () noexcept (noexcept (function_.get ()())) {
+    ~scope_guard () noexcept (
+        noexcept (std::declval< box< function_type >& > ().get ()())) {
         if (policy_type::should_execute ())
             function_.get ()();
     }

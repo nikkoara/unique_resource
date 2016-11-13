@@ -4,6 +4,7 @@
 // A detailed look at a wrapper class, by value and by reference:
 //
 
+#include <functional>
 #include <iostream>
 #include <utility>
 
