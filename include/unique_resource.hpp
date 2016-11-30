@@ -37,7 +37,8 @@ namespace detail {
 
 template< typename T >
 constexpr auto should_move_assign_v =
-    std::is_nothrow_move_assignable< T >::value || !std::is_copy_assignable< T >::value;
+        std::is_nothrow_move_assignable< T >::value
+    || !std::is_copy_assignable< T >::value;
 
 template< typename T >
 using maybe_move_assign_result = std::conditional<
@@ -50,7 +51,7 @@ maybe_move_assign (T& x) noexcept {
 }
 
 template< typename T >
-const T&
+constexpr T&
 as_const (T& x) noexcept {
     return x;
 }
@@ -499,17 +500,17 @@ public:
 
 template< typename T, typename U >
 inline auto
-make_unique_resource (T&& t, U&& u)
-    noexcept (noexcept ( unique_resource< T, U > (
-                             std::forward< T > (t), std::forward< U > (u)))) {
+make_unique_resource (T&& t, U&& u) noexcept (
+    noexcept ( unique_resource< T, U > (
+                   std::forward< T > (t), std::forward< U > (u)))) {
     return unique_resource< T, U > (
         std::forward< T > (t), std::forward< U > (u));
 }
 
 template< typename T, typename U >
 inline auto
-make_unique_resource (T& t, U&& u)
-    noexcept (noexcept ( unique_resource< T, U > (t, std::forward< U > (u)))) {
+make_unique_resource (T& t, U&& u) noexcept (
+    noexcept ( unique_resource< T, U > (t, std::forward< U > (u)))) {
     return unique_resource< T, U > (t, std::forward< U > (u));
 }
 
