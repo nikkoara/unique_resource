@@ -1,18 +1,11 @@
 # -*- mode: makefile; -*-
 
-BOOST_CPPFLAGS += -DBOOST_SPIRIT_THREADSAFE
-
 BOOST_LIBS =                                    \
     $(BOOST_SYSTEM_LIBS)                        \
     $(BOOST_THREAD_LIBS)                        \
     $(BOOST_TIMER_LIBS)
 
-AM_CPPFLAGS = -I. -I$(top_srcdir)/include       \
-    $(BOOST_CPPFLAGS)
-
-AM_LDFLAGS =                                    \
-    $(BOOST_SYSTEM_LDFLAGS)                     \
-    $(BOOST_THREAD_LDFLAGS)                     \
-    $(BOOST_TIMER_LDFLAGS)
+AM_CPPFLAGS = -I. -I$(top_srcdir)/include $(BOOST_CPPFLAGS)
+AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 LIBS = $(BOOST_LIBS)

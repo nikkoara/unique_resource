@@ -6,7 +6,8 @@ A one-class implementation of a generic resource management in C++14.
 Attributions
 ------------
 
-Based on [this](http://tinyurl.com/hpzgalw) which, in turn, is mostly based on
-(or actually is) a design and an implementation from Eric Niebler. The code now
-compiles and runs on my Mac, YMMV. Some unit testing has been added on the parts
-changed from the source implementation. 
+This source code is based on the work and code of [Peter
+Sommerlad](http://tinyurl.com/hpzgalw), Abdrew Sandoval, Eric Niebler, and
+Daniel Krügler. It contains minor additions and changes, as well as a skeleton
+of unit testing that I needed to get confidence in its functionality. The unit
+testing in particular is borrowing from unique_ptr unit tests.

@@ -3,7 +3,7 @@
 #define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE unique_resource
 
-#include <unique_resource.hpp>
+#include <unique_resource.hh>
 
 #include <boost/format.hpp>
 using fmt = boost::format;
@@ -21,7 +21,7 @@ BOOST_AUTO_TEST_SUITE(details)
 
 ////////////////////////////////////////////////////////////////////////
 
-namespace A {
+namespace _01 {
 
 template< int a, int b >
 struct S {
@@ -35,10 +35,10 @@ struct S< 0, b > {
     S& operator= (S&&) noexcept (b) { return *this; }
 };
 
-} // namespace A
+} // namespace _01
 
 BOOST_AUTO_TEST_CASE (conditional_move_assign_test) {
-    using namespace A;
+    using namespace _01;
 
     BOOST_TEST (( true == X::detail::should_move_assign_v< S< 0, 0 > >));
     BOOST_TEST (( true == X::detail::should_move_assign_v< S< 0, 1 > >));
@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE (conditional_move_assign_test) {
 
 ////////////////////////////////////////////////////////////////////////
 
-namespace AA {
+namespace _02 {
 
 struct S { };
 
@@ -62,10 +62,10 @@ inline bool is_boxable_ref () {
     return std::is_constructible< X::detail::box< T& >, U&& >::value;
 }
 
-} // namespace AA
+} // namespace _02
 
 BOOST_AUTO_TEST_CASE (std_detail_box_test) {
-    using namespace AA;
+    using namespace _02;
 
     {
 #define T(t, x, y) BOOST_TEST (t == (is_boxable< x, y > ()))
@@ -129,7 +129,7 @@ BOOST_AUTO_TEST_CASE (std_detail_box_test) {
 
 ////////////////////////////////////////////////////////////////////////
 
-namespace B {
+namespace _03 {
 
 struct S {
     int value = 0;
@@ -171,9 +171,9 @@ struct X< 0 > {
 };
 
 BOOST_AUTO_TEST_CASE (uncaught_exceptions_test) {
+    using namespace _03;
 
     {
-        using namespace B;
         X< 1 > x;
         X< 33 > y;
     }
@@ -181,7 +181,7 @@ BOOST_AUTO_TEST_CASE (uncaught_exceptions_test) {
 
 ////////////////////////////////////////////////////////////////////////
 
-namespace C {
+namespace _04 {
 
 template< typename T = std::function< void() > >
 struct S {
@@ -192,10 +192,10 @@ struct S {
     function_type f_;
 };
 
-}
+} // _04
 
 BOOST_AUTO_TEST_CASE (exit_policy_test) {
-    using namespace C;
+    using namespace _04;
 
     {
         {
@@ -233,7 +233,7 @@ BOOST_AUTO_TEST_CASE (exit_policy_test) {
 }
 
 BOOST_AUTO_TEST_CASE (fail_policy_test) {
-    using namespace C;
+    using namespace _04;
 
     static constexpr auto maxint = (std::numeric_limits< int >::max) ();
 
@@ -286,7 +286,7 @@ BOOST_AUTO_TEST_CASE (fail_policy_test) {
 }
 
 BOOST_AUTO_TEST_CASE (success_policy_test) {
-    using namespace C;
+    using namespace _04;
 
     {
         {
@@ -323,7 +323,9 @@ BOOST_AUTO_TEST_CASE (success_policy_test) {
     }
 }
 
-namespace D {
+////////////////////////////////////////////////////////////////////////
+
+namespace _05 {
 
 static int counter /* = 0 */;
 
@@ -334,7 +336,7 @@ static void f () {
 } // namespace D
 
 BOOST_AUTO_TEST_CASE (basic_scope_guard_test) {
-    using namespace D;
+    using namespace _05;
 
     auto g = [&] { ++counter; };
 
@@ -354,7 +356,7 @@ BOOST_AUTO_TEST_CASE (basic_scope_guard_test) {
 
 ////////////////////////////////////////////////////////////////////////
 
-namespace E {
+namespace _06 {
 
 int global_resource = 0;
 
@@ -397,10 +399,10 @@ void release_resource (S&) {
     --global_resource;
 }
 
-} // namespace E
+} // namespace _06
 
 BOOST_AUTO_TEST_CASE (unique_resource_exception_safety_test) {
-    using namespace E;
+    using namespace _06;
 
     for (int i = 0; i < 100; ++i) {
         acquire_resource ();
@@ -424,7 +426,7 @@ BOOST_AUTO_TEST_CASE (unique_resource_exception_safety_test) {
 }
 
 BOOST_AUTO_TEST_CASE (unique_resource_test) {
-    using namespace E;
+    using namespace _06;
 
     {
         acquire_resource ();

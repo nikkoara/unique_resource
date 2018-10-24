@@ -11,7 +11,6 @@ AC_CONFIG_HEADERS([include/_config.hpp:include/config.ac])
 AC_PROG_CXX
 AC_CONFIG_CXX_WARNINGS
 
-dnl AC_ENABLE_CXX_DIALECT([c++11])
 AC_ENABLE_CXX_DIALECT([c++1z])
 
 AC_PROG_LIBTOOL
@@ -24,9 +23,6 @@ BOOST_SYSTEM([])
 BOOST_THREADS([])
 BOOST_TIMER([])
 BOOST_TEST([])
-
-AM_CONDITIONAL([DARWIN],[test `uname` == Darwin])
-AM_CONDITIONAL([LINUX], [test `uname` == Linux])
 
 AC_CONFIG_FILES(Makefile)
 AC_CONFIG_FILES(include/Makefile)
