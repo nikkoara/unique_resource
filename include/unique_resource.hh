@@ -310,10 +310,13 @@ private:
         detail::box< D >, T, detail::scope_ignore >;
 
     template< typename T, typename U >
-    using enable_constructor_t = std::enable_if_t<
+    using enable_member_t = std::enable_if_t<
         is_boxable_resource_v< T > && is_boxable_deleter_v< U > >;
 
 private:
+    template< typename, typename >
+    friend struct unique_resource;
+
     detail::box< R > resource_;
     detail::box< D > deleter_;
 
@@ -324,7 +327,7 @@ private:
     unique_resource& operator= (const unique_resource&) = delete;
 
 public:
-    template< typename T, typename U, typename = enable_constructor_t< T, U > >
+    template< typename T, typename U, typename = enable_member_t< T, U > >
     explicit unique_resource (T&& t, U&& u, bool b)
         noexcept (
             noexcept (detail::box< R > ((R&&)t, detail::scope_ignore { })) &&
@@ -334,7 +337,7 @@ public:
           execute_on_reset_ (b)
         { }
 
-    template< typename T, typename U, typename = enable_constructor_t< T, U > >
+    template< typename T, typename U, typename = enable_member_t< T, U > >
     explicit unique_resource (T&& t, U&& u)
         noexcept (
             noexcept (detail::box< R > (forward< T > (t), detail::scope_ignore { })) &&
@@ -343,7 +346,8 @@ public:
           deleter_  (std::forward< U > (u), make_scope_exit ([&, this] { u (get ()); }))
         { }
 
-    unique_resource (unique_resource&& other)
+    template< typename T, typename U, typename = enable_member_t< T, U > >
+    unique_resource (unique_resource< T, U >&& other)
         noexcept (
             noexcept (detail::box< R > (other.resource_.move (), detail::scope_ignore { })) &&
             noexcept (detail::box< D > (other.deleter_.move (),  detail::scope_ignore { })))
@@ -356,8 +360,8 @@ public:
           execute_on_reset_ (std::exchange (other.execute_on_reset_, false))
         { }
 
-    unique_resource&
-    operator= (unique_resource&& other)
+    template< typename T, typename U, typename = enable_member_t< T, U > >
+    unique_resource& operator= (unique_resource< T, U >&& other)
         noexcept (is_nothrow_move_assignable_v< R > &&
                   is_nothrow_move_assignable_v< D >) {
         if (this == &other)
@@ -467,7 +471,8 @@ make_unique_resource_checked (T&& t, const S& s, U&& u)
     noexcept (is_nothrow_constructible_v< std::decay_t< T >, T > &&
               is_nothrow_constructible_v< std::decay_t< U >, U >) {
     bool b = t != s;
-    return { std::forward< T > (t), std::forward< U > (u), b };
+    return unique_resource< std::decay_t< T >, std::decay_t< U > >{
+        std::forward< T > (t), std::forward< U > (u), b };
 }
 
 }}

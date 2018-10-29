@@ -477,4 +477,22 @@ BOOST_AUTO_TEST_CASE (unique_resource_test) {
     BOOST_TEST (0 == global_resource);
 }
 
+namespace _07 {
+void f (int) { }
+}
+
+BOOST_AUTO_TEST_CASE (conversion_test) {
+    using namespace _07;
+
+    {
+        using T = X::unique_resource< int, std::function< void(int) > >;
+        T t = X::make_unique_resource (0, f);
+    }
+
+    {
+        using T = X::unique_resource< int, std::function< void(int) > >;
+        T t = X::make_unique_resource_checked (0, 0, f);
+    }
+}
+
 BOOST_AUTO_TEST_SUITE_END()
