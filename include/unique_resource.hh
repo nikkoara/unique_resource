@@ -37,6 +37,9 @@ inline constexpr T& as_const (T& x) noexcept {
     return x;
 }
 
+template< bool B > inline void rethrow_helper () { throw; }
+template< > inline void rethrow_helper< true > () { }
+
 ////////////////////////////////////////////////////////////////////////
 
 struct scope_ignore;
@@ -364,38 +367,50 @@ public:
     unique_resource& operator= (unique_resource< T, U >&& other)
         noexcept (is_nothrow_move_assignable_v< R > &&
                   is_nothrow_move_assignable_v< D >) {
-        if (this == &other)
-            return *this;
+        if (this != &other) {
+            reset ();
 
-        reset ();
-
-        if (is_nothrow_move_assignable_v< detail::box< R > >) {
-            deleter_  = detail::move_assign_cast (other.deleter_);
-            resource_ = detail::move_assign_cast (other.resource_);
-        }
-        else if (is_nothrow_move_assignable_v< detail::box< D > >) {
-            resource_ = detail::move_assign_cast (other.resource_);
-            deleter_  = detail::move_assign_cast (other.deleter_);
-        }
-        else {
-            resource_ = detail::as_const (other.resource_);
-
-            try {
-                // Try to avoid a resource leak
-                deleter_  = detail::as_const (other.deleter_);
+            if (is_nothrow_move_assignable_v< detail::box< R > >) {
+                deleter_  = detail::move_assign_cast (other.deleter_);
+                resource_ = detail::move_assign_cast (other.resource_);
+                execute_on_reset_ = std::exchange (other.execute_on_reset_, false);
             }
-            catch (...) {
-                // Release the resource with the other deleter
-                other.get_deleter ()(get ());
+            else if (is_nothrow_move_assignable_v< detail::box< D > >) {
+                resource_ = detail::move_assign_cast (other.resource_);
+                deleter_  = detail::move_assign_cast (other.deleter_);
+                execute_on_reset_ = std::exchange (other.execute_on_reset_, false);
+            }
+            else {
+                resource_ = detail::as_const (other.resource_);
 
-                // Deactivate deleters
-                execute_on_reset_ = other.execute_on_reset_ = false;
+                //
+                // Try to avoid a resource leak, the resource has been assigned
+                // successfully, and the old deleter has lost track of it:
+                //
+                try {
+                    deleter_  = detail::as_const (other.deleter_);
+                    execute_on_reset_ = std::exchange (other.execute_on_reset_, false);
+                }
+                catch (...) {
+                    //
+                    // Release the resource with the old deleter:
+                    //
+                    other.get_deleter ()(get ());
 
-                throw;
+                    //
+                    // Deactivate all deleters:
+                    //
+                    execute_on_reset_ = other.execute_on_reset_ = false;
+
+                    //
+                    // And re-throw matching the function type:
+                    //
+                    detail::rethrow_helper<
+                        is_nothrow_move_assignable_v< R > &&
+                        is_nothrow_move_assignable_v< D > > ();
+                }
             }
         }
-
-        execute_on_reset_ = std::exchange (other.execute_on_reset_, false);
 
         return *this;
     }

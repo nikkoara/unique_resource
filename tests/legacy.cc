@@ -5,6 +5,13 @@
 
 #include <unique_resource.hh>
 
+#include <boost/hana/cartesian_product.hpp>
+#include <boost/hana/for_each.hpp>
+#include <boost/hana/integral_constant.hpp>
+#include <boost/hana/replicate.hpp>
+#include <boost/hana/tuple.hpp>
+namespace hana = boost::hana;
+
 #include <boost/format.hpp>
 using fmt = boost::format;
 
@@ -357,132 +364,11 @@ BOOST_AUTO_TEST_CASE (basic_scope_guard_test) {
 ////////////////////////////////////////////////////////////////////////
 
 namespace _06 {
-
-int global_resource = 0;
-
-struct S {
-    S () { maybe_throw (); }
-
-    S (int value) { S::static_value = value; }
-
-    S (S const&) { maybe_throw (); }
-    S (S&&)      { maybe_throw (); }
-
-    S& operator= (const S&) { return maybe_throw (), *this; }
-    S& operator= (S&&)      { return maybe_throw (), *this; }
-
-    operator int () const {
-        return S::static_value;
-    }
-
-private:
-    void maybe_throw () {
-        if (0 == S::static_value)
-            throw 0;
-
-        if (0 < S::static_value)
-            --S::static_value;
-    }
-
-private:
-    static int static_value;
-};
-
-int S::static_value /* = 0 */;
-
-void acquire_resource () {
-    global_resource = 1;
-}
-
-void release_resource (S&) {
-    BOOST_TEST (1 == global_resource);
-    --global_resource;
-}
-
-} // namespace _06
-
-BOOST_AUTO_TEST_CASE (unique_resource_exception_safety_test) {
-    using namespace _06;
-
-    for (int i = 0; i < 100; ++i) {
-        acquire_resource ();
-
-        try {
-            auto t = X::make_unique_resource (S (i), &release_resource);
-
-            for (;;) {
-                auto tmp (std::move (t));
-                t = std::move (tmp);
-            }
-        }
-        catch (int) {
-        }
-        catch (...) {
-            BOOST_TEST (false, "unexpected exception");
-        }
-
-        BOOST_TEST (0 == global_resource);
-    }
-}
-
-BOOST_AUTO_TEST_CASE (unique_resource_test) {
-    using namespace _06;
-
-    {
-        acquire_resource ();
-        auto t = X::make_unique_resource (S (-1), release_resource);
-        BOOST_TEST (t.get () == -1);
-    }
-
-    BOOST_TEST (0 == global_resource);
-
-    {
-        acquire_resource ();
-        auto t = X::make_unique_resource (S (-1), &release_resource);
-        BOOST_TEST (t.get () == -1);
-    }
-
-    BOOST_TEST (0 == global_resource);
-
-    {
-        acquire_resource ();
-
-        S s (-1);
-        auto t = X::make_unique_resource (s, &release_resource);
-
-        BOOST_TEST (t.get () == -1);
-    }
-
-    BOOST_TEST (0 == global_resource);
-
-    {
-        acquire_resource ();
-
-        auto t = X::make_unique_resource (S (-1), [&](S&) { --global_resource; });
-
-        BOOST_TEST (t.get () == -1);
-    }
-
-    BOOST_TEST (0 == global_resource);
-
-    {
-        acquire_resource ();
-
-        S s (-1);
-        auto t = X::make_unique_resource (s, [&](S&) { --global_resource; });
-
-        BOOST_TEST (t.get () == -1);
-    }
-
-    BOOST_TEST (0 == global_resource);
-}
-
-namespace _07 {
 void f (int) { }
 }
 
 BOOST_AUTO_TEST_CASE (conversion_test) {
-    using namespace _07;
+    using namespace _06;
 
     {
         using T = X::unique_resource< int, std::function< void(int) > >;
@@ -493,6 +379,141 @@ BOOST_AUTO_TEST_CASE (conversion_test) {
         using T = X::unique_resource< int, std::function< void(int) > >;
         T t = X::make_unique_resource_checked (0, 0, f);
     }
+}
+
+////////////////////////////////////////////////////////////////////////
+
+namespace _07 {
+
+template< bool B > void throw_helper () { throw 0; }
+template< > void throw_helper< true > () { }
+
+int global_resource = 0;
+
+void acquire_resource () {
+    global_resource = 1;
+}
+
+void release_resource () {
+    BOOST_TEST (1 == global_resource);
+    --global_resource;
+}
+
+template< typename A, typename B >
+struct S {
+    S () noexcept { }
+
+    S (int value) { S::static_value = value; }
+
+    S (S const&) noexcept (A::value) { maybe_throw< A::value, 1 > (); }
+    S (S&&)      noexcept (B::value) { maybe_throw< B::value, 2 > (); }
+
+    S& operator= (const S&) noexcept (A::value) { return maybe_throw< A::value, 3 > (), *this; }
+    S& operator= (S&&)      noexcept (B::value) { return maybe_throw< B::value, 4 > (), *this; }
+
+    operator int () const {
+        return S::static_value;
+    }
+
+    template< typename C, typename D >
+    void operator() (const S< C, D >&) const {
+        release_resource ();
+    }
+
+    static int static_value;
+
+private:
+    template< bool Y, int >
+    void maybe_throw () noexcept (Y) {
+        if (0 == S::static_value) {
+            throw_helper< Y > ();
+        }
+
+        if (0 < S::static_value)
+            --S::static_value;
+    }
+};
+
+template< typename A, typename B >
+int S< A, B >::static_value /* = 0 */;
+
+template< typename ...Ts >
+S< Ts... > make_S (int x, const Ts&...) {
+    return { x };
+}
+
+template< typename A, typename B >
+std::ostream&
+operator<< (std::ostream& ss, const S< A, B >& s) {
+    ss << "< " << std::boolalpha << A::value << ", " << B::value
+       << " >";
+    return ss;
+}
+
+} // namespace _07
+
+template< typename T, typename U >
+void do_test (T&& t, U&& u) {
+    using namespace _07;
+
+    std::cout
+        << " --> types: R" << t << "(" << T::static_value << "), D"
+        << u << "(" << U::static_value << ")" << std::endl;
+
+    acquire_resource ();
+
+    try {
+        auto x = X::make_unique_resource (
+            std::forward< T > (t), std::forward< U > (u));
+
+	for (int i = 0; i < 64; ++i) {
+	    auto y (std::move (x));
+	    x = std::move (y);
+	}
+    }
+    catch (int) {
+    }
+    catch (...) {
+        BOOST_TEST (false, "unexpected exception");
+    }
+
+    BOOST_TEST (0 == global_resource);
+}
+
+BOOST_AUTO_TEST_CASE (unique_resource_big_exception_safety_test) {
+    using namespace _07;
+
+    constexpr auto xs = hana::cartesian_product (
+        hana::replicate< hana::tuple_tag > (
+            hana::tuple_c< bool, true, false >, hana::size_c< 2 >));
+
+#if 1
+
+    for (int i = 0; i < 32; ++i) {
+	for (int j = 0; j < 32; ++j) {
+            hana::for_each (xs, [&](auto x) {
+                hana::unpack (x, [&](auto ...args1) {
+                    hana::for_each (xs, [&](auto y) {
+                        hana::unpack (y, [&](auto ...args2) {
+                            do_test (make_S (i, args1...), make_S (j, args2...));
+                        });
+                    });
+                });
+            });
+        }
+    }
+
+#else
+
+#define T(i, a, b, j, c, d)                                 \
+    do_test (                                               \
+        make_S (i, hana::bool_c< a >, hana::bool_c< b >),   \
+        make_S (j, hana::bool_c< c >, hana::bool_c< d >)    \
+        )
+
+    T (4, true, false, 2, false, false);
+
+#endif // 0
 }
 
 BOOST_AUTO_TEST_SUITE_END()
